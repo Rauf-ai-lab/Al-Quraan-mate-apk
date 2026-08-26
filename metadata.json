@@ -1,6 +1,6 @@
 {
-  "name": "Remix DeenMate",
-  "description": "Complete Muslim lifestyle app featuring offline Quran, local prayer times calculation, Qibla compass, Azkar \u0026 Duas, Hadith collections, digital Tasbeeh, Hijri calendar, Ramadan mode, and daily Deen tracker.",
+  "name": "DeenMate",
+  "description": "Complete Muslim lifestyle app featuring offline Quran, local prayer times calculation, Qibla compass, Azkar & Duas, Hadith collections, digital Tasbeeh, Hijri calendar, Ramadan mode, and daily Deen tracker.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

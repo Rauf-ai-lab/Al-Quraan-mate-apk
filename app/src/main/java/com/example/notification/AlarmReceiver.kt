@@ -21,6 +21,9 @@ class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == NotificationHelper.ACTION_STOP_ADHAN) {
             AdhanAudioPlayer.stopAdhan()
+            try {
+                com.example.audio.AdhanPlaybackForegroundService.stopAdhanService(context)
+            } catch (_: Exception) {}
             return
         }
 
@@ -40,11 +43,15 @@ class AlarmReceiver : BroadcastReceiver() {
             message = message
         )
 
-        // Play Adhan sound for prayer alerts
+        // Play Real Adhan audio with background service support for prayer alerts
         if (type == "PRAYER") {
             try {
-                AdhanAudioPlayer.playAdhanSound(context, soundName, durationSeconds = 30)
-            } catch (_: Exception) {}
+                com.example.audio.AdhanPlaybackForegroundService.startAdhanService(context, title, soundName)
+            } catch (_: Exception) {
+                try {
+                    AdhanAudioPlayer.playAdhanSound(context, soundName, durationSeconds = 45)
+                } catch (_: Exception) {}
+            }
         }
 
         // Reschedule upcoming prayer alarms

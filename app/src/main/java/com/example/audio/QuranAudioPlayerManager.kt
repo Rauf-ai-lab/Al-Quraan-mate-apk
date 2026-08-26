@@ -9,6 +9,7 @@ import android.util.Log
 import com.example.data.local.IslamicDataSource
 import com.example.data.model.Ayah
 import com.example.data.model.Surah
+import com.example.data.preferences.UserPreferencesRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,11 +35,21 @@ data class QuranPlaybackState(
 
 class QuranAudioPlayerManager(private val context: Context) {
 
-    private val TAG = "QuranAudioPlayerManager"
+    companion object {
+        private const val TAG = "QuranAudioPlayerManager"
+        var sharedInstance: QuranAudioPlayerManager? = null
+            private set
+    }
+
+    init {
+        sharedInstance = this
+    }
+
     private var mediaPlayer: MediaPlayer? = null
     private val coroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var progressJob: Job? = null
     private var loadJob: Job? = null
+    private val preferencesRepository = UserPreferencesRepository(context)
 
     private val _playbackState = MutableStateFlow(QuranPlaybackState())
     val playbackState: StateFlow<QuranPlaybackState> = _playbackState.asStateFlow()
@@ -70,7 +81,7 @@ class QuranAudioPlayerManager(private val context: Context) {
         }
     }
 
-    fun playAyah(surah: Surah, ayah: Ayah) {
+    fun playAyah(surah: Surah, ayah: Ayah, startPositionMs: Int = 0) {
         loadJob?.cancel()
         stopProgressTracker()
         releasePlayer()
@@ -95,10 +106,13 @@ class QuranAudioPlayerManager(private val context: Context) {
             currentAyahIndex = indexInList,
             totalAyahsInSurah = totalCount,
             playbackProgress = 0f,
-            currentPositionMs = 0,
+            currentPositionMs = startPositionMs,
             durationMs = 0,
             errorMessage = null
         )
+
+        // Save session state immediately
+        persistPlaybackSession(surah.number, ayah.numberInSurah, startPositionMs, _playbackState.value.selectedReciter.id)
 
         loadJob = coroutineScope.launch {
             val result = QuranAudioService.getAyahAudioFile(
@@ -110,7 +124,7 @@ class QuranAudioPlayerManager(private val context: Context) {
 
             when (result) {
                 is QuranAudioResult.Success -> {
-                    initAndPlayMedia(result.audioFile, surah, ayah, result.isFromAi)
+                    initAndPlayMedia(result.audioFile, surah, ayah, result.isFromAi, startPositionMs)
                 }
                 is QuranAudioResult.Error -> {
                     _playbackState.value = _playbackState.value.copy(
@@ -121,6 +135,24 @@ class QuranAudioPlayerManager(private val context: Context) {
                 }
             }
         }
+    }
+
+    fun resumeRecitation(surahNumber: Int, ayahNumber: Int, positionMs: Int, reciterId: String) {
+        val surah = IslamicDataSource.SURAHS.find { it.number == surahNumber } ?: IslamicDataSource.SURAHS[0]
+        val ayahs = IslamicDataSource.getAyahsForSurah(surah)
+        val ayah = ayahs.find { it.numberInSurah == ayahNumber } ?: ayahs.firstOrNull() ?: Ayah(
+            numberInSurah = ayahNumber,
+            overallNumber = 1,
+            surahNumber = surah.number,
+            arabicText = "",
+            englishTranslation = "",
+            juz = surah.juzNumber,
+            page = surah.startPage
+        )
+        val reciter = ReciterVoicePacks.RECITERS.find { it.id == reciterId } ?: ReciterVoicePacks.DEFAULT_RECITER
+        _playbackState.value = _playbackState.value.copy(selectedReciter = reciter)
+        setSurahAyahs(ayahs)
+        playAyah(surah, ayah, positionMs)
     }
 
     fun playNextAyah() {
@@ -226,6 +258,8 @@ class QuranAudioPlayerManager(private val context: Context) {
                 isPlaying = false,
                 isPaused = true
             )
+            updateForegroundNotification(false)
+            persistCurrentPosition()
         } else {
             player.start()
             startProgressTracker()
@@ -233,6 +267,7 @@ class QuranAudioPlayerManager(private val context: Context) {
                 isPlaying = true,
                 isPaused = false
             )
+            updateForegroundNotification(true)
         }
     }
 
@@ -247,6 +282,7 @@ class QuranAudioPlayerManager(private val context: Context) {
                     playbackProgress = fraction.coerceIn(0f, 1f),
                     currentPositionMs = targetMs
                 )
+                persistCurrentPosition()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error seeking audio", e)
@@ -264,9 +300,18 @@ class QuranAudioPlayerManager(private val context: Context) {
             playbackProgress = 0f,
             currentPositionMs = 0
         )
+        try {
+            QuranAudioForegroundService.stopService(context)
+        } catch (_: Exception) {}
     }
 
-    private fun initAndPlayMedia(audioFile: File, surah: Surah, ayah: Ayah, isFromAi: Boolean) {
+    private fun initAndPlayMedia(
+        audioFile: File,
+        surah: Surah,
+        ayah: Ayah,
+        isFromAi: Boolean,
+        initialSeekMs: Int = 0
+    ) {
         try {
             releasePlayer()
 
@@ -282,6 +327,10 @@ class QuranAudioPlayerManager(private val context: Context) {
                 prepare()
             }
 
+            if (initialSeekMs > 0 && initialSeekMs < player.duration) {
+                player.seekTo(initialSeekMs)
+            }
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 player.playbackParams = player.playbackParams.setSpeed(_playbackState.value.playbackSpeed)
             }
@@ -293,7 +342,7 @@ class QuranAudioPlayerManager(private val context: Context) {
                     isPaused = false,
                     playbackProgress = 1f
                 )
-                // Automatically advance to the next Ayah for seamless continuous recitation
+                // Automatically advance to the next Ayah for continuous recitation
                 playNextAyah()
             }
 
@@ -317,11 +366,13 @@ class QuranAudioPlayerManager(private val context: Context) {
                 isPaused = false,
                 isLoading = false,
                 durationMs = player.duration,
+                currentPositionMs = initialSeekMs,
                 isFromAi = isFromAi,
                 errorMessage = null
             )
 
             startProgressTracker()
+            updateForegroundNotification(true)
 
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start MediaPlayer for file ${audioFile.path}", e)
@@ -334,9 +385,44 @@ class QuranAudioPlayerManager(private val context: Context) {
         }
     }
 
+    private fun updateForegroundNotification(isPlaying: Boolean) {
+        val surah = _playbackState.value.currentSurah ?: return
+        val ayah = _playbackState.value.currentAyah ?: return
+        val reciter = _playbackState.value.selectedReciter
+
+        try {
+            QuranAudioForegroundService.startOrUpdate(
+                context = context,
+                surahName = surah.nameEnglish,
+                ayahNumber = ayah.numberInSurah,
+                reciterName = reciter.name,
+                isPlaying = isPlaying
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to start or update QuranAudioForegroundService: ${e.message}")
+        }
+    }
+
+    private fun persistPlaybackSession(surahNum: Int, ayahNum: Int, positionMs: Int, reciterId: String) {
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                preferencesRepository.saveAudioPlaybackState(surahNum, ayahNum, positionMs, reciterId)
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun persistCurrentPosition() {
+        val surah = _playbackState.value.currentSurah ?: return
+        val ayah = _playbackState.value.currentAyah ?: return
+        val pos = _playbackState.value.currentPositionMs
+        val reciterId = _playbackState.value.selectedReciter.id
+        persistPlaybackSession(surah.number, ayah.numberInSurah, pos, reciterId)
+    }
+
     private fun startProgressTracker() {
         stopProgressTracker()
         progressJob = coroutineScope.launch {
+            var tickCount = 0
             while (isActive) {
                 val player = mediaPlayer
                 if (player != null && player.isPlaying) {
@@ -349,6 +435,10 @@ class QuranAudioPlayerManager(private val context: Context) {
                             currentPositionMs = current,
                             durationMs = duration
                         )
+                        tickCount++
+                        if (tickCount % 50 == 0) { // Every 5 seconds, save exact position
+                            persistCurrentPosition()
+                        }
                     } catch (_: Exception) {}
                 }
                 delay(100L)

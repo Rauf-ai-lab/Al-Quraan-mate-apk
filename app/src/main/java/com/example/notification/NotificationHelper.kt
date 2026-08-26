@@ -22,14 +22,6 @@ object NotificationHelper {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-            val alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-
-            val audioAttributes = AudioAttributes.Builder()
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .setUsage(AudioAttributes.USAGE_ALARM)
-                .build()
-
             val prayerChannel = NotificationChannel(
                 CHANNEL_PRAYER_ID,
                 "Prayer Times & Adhan",
@@ -38,7 +30,7 @@ object NotificationHelper {
                 description = "High-priority lock-screen alerts & Adhan for all 5 daily prayers"
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 500, 250, 500, 250, 1000)
-                setSound(alarmSound, audioAttributes)
+                setSound(null, null)
                 lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
             }
 

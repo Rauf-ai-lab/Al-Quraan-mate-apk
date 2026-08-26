@@ -56,7 +56,15 @@ data class UserSettings(
     val hasCustomProfile: Boolean = false,
     val profileName: String = "",
     val profileBio: String = "",
-    val profileAvatar: String = "crescent"
+    val profileAvatar: String = "crescent",
+    val lastAudioSurahNumber: Int = 1,
+    val lastAudioAyahNumber: Int = 1,
+    val lastAudioPositionMs: Int = 0,
+    val lastAudioReciterId: String = "mishary",
+    val hasSavedAudioSession: Boolean = false,
+    val offlineQuranLastSurah: Int = 1,
+    val offlineQuranLastAyah: Int = 1,
+    val offlineQuranLastPage: Int = 1
 )
 
 class UserPreferencesRepository(private val context: Context) {
@@ -106,6 +114,14 @@ class UserPreferencesRepository(private val context: Context) {
         val PROFILE_NAME = stringPreferencesKey("profile_name")
         val PROFILE_BIO = stringPreferencesKey("profile_bio")
         val PROFILE_AVATAR = stringPreferencesKey("profile_avatar")
+        val LAST_AUDIO_SURAH = intPreferencesKey("last_audio_surah")
+        val LAST_AUDIO_AYAH = intPreferencesKey("last_audio_ayah")
+        val LAST_AUDIO_POS_MS = intPreferencesKey("last_audio_pos_ms")
+        val LAST_AUDIO_RECITER = stringPreferencesKey("last_audio_reciter")
+        val HAS_SAVED_AUDIO = booleanPreferencesKey("has_saved_audio")
+        val OFFLINE_LAST_SURAH = intPreferencesKey("offline_last_surah")
+        val OFFLINE_LAST_AYAH = intPreferencesKey("offline_last_ayah")
+        val OFFLINE_LAST_PAGE = intPreferencesKey("offline_last_page")
     }
 
     val userSettingsFlow: Flow<UserSettings> = context.dataStore.data.map { prefs ->
@@ -159,7 +175,15 @@ class UserPreferencesRepository(private val context: Context) {
             hasCustomProfile = prefs[PreferencesKeys.HAS_CUSTOM_PROFILE] ?: false,
             profileName = prefs[PreferencesKeys.PROFILE_NAME] ?: "",
             profileBio = prefs[PreferencesKeys.PROFILE_BIO] ?: "",
-            profileAvatar = prefs[PreferencesKeys.PROFILE_AVATAR] ?: "crescent"
+            profileAvatar = prefs[PreferencesKeys.PROFILE_AVATAR] ?: "crescent",
+            lastAudioSurahNumber = prefs[PreferencesKeys.LAST_AUDIO_SURAH] ?: 1,
+            lastAudioAyahNumber = prefs[PreferencesKeys.LAST_AUDIO_AYAH] ?: 1,
+            lastAudioPositionMs = prefs[PreferencesKeys.LAST_AUDIO_POS_MS] ?: 0,
+            lastAudioReciterId = prefs[PreferencesKeys.LAST_AUDIO_RECITER] ?: "mishary",
+            hasSavedAudioSession = prefs[PreferencesKeys.HAS_SAVED_AUDIO] ?: false,
+            offlineQuranLastSurah = prefs[PreferencesKeys.OFFLINE_LAST_SURAH] ?: 1,
+            offlineQuranLastAyah = prefs[PreferencesKeys.OFFLINE_LAST_AYAH] ?: 1,
+            offlineQuranLastPage = prefs[PreferencesKeys.OFFLINE_LAST_PAGE] ?: 1
         )
     }
 
@@ -305,6 +329,31 @@ class UserPreferencesRepository(private val context: Context) {
             it[PreferencesKeys.PROFILE_NAME] = ""
             it[PreferencesKeys.PROFILE_BIO] = ""
             it[PreferencesKeys.PROFILE_AVATAR] = "crescent"
+        }
+    }
+
+    suspend fun saveAudioPlaybackState(surahNumber: Int, ayahNumber: Int, positionMs: Int, reciterId: String) {
+        context.dataStore.edit {
+            it[PreferencesKeys.LAST_AUDIO_SURAH] = surahNumber
+            it[PreferencesKeys.LAST_AUDIO_AYAH] = ayahNumber
+            it[PreferencesKeys.LAST_AUDIO_POS_MS] = positionMs
+            it[PreferencesKeys.LAST_AUDIO_RECITER] = reciterId
+            it[PreferencesKeys.HAS_SAVED_AUDIO] = true
+        }
+    }
+
+    suspend fun clearSavedAudioState() {
+        context.dataStore.edit {
+            it[PreferencesKeys.HAS_SAVED_AUDIO] = false
+            it[PreferencesKeys.LAST_AUDIO_POS_MS] = 0
+        }
+    }
+
+    suspend fun saveOfflineQuranProgress(surahNumber: Int, ayahNumber: Int, page: Int = 1) {
+        context.dataStore.edit {
+            it[PreferencesKeys.OFFLINE_LAST_SURAH] = surahNumber
+            it[PreferencesKeys.OFFLINE_LAST_AYAH] = ayahNumber
+            it[PreferencesKeys.OFFLINE_LAST_PAGE] = page
         }
     }
 }

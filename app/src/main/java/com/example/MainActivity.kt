@@ -36,6 +36,8 @@ import com.example.ui.navigation.Screen
 import com.example.ui.screens.discover.DiscoverScreen
 import com.example.ui.screens.home.HomeScreen
 import com.example.ui.screens.prayer.PrayerScreen
+import com.example.ui.screens.quran.OfflineQuranReaderScreen
+import com.example.ui.screens.quran.OfflineQuranScreen
 import com.example.ui.screens.quran.QuranScreen
 import com.example.ui.screens.quran.SurahReaderScreen
 import com.example.ui.screens.search.SearchScreen
@@ -73,13 +75,20 @@ class MainActivity : ComponentActivity() {
 fun DeenMateMainApp(viewModel: MainViewModel) {
     var currentScreen by remember { mutableStateOf<String>(Screen.Home.route) }
     var activeDiscoverTab by remember { mutableStateOf(DiscoverTab.QIBLA) }
+    
+    // Online Audio Reader State
     var activeSurahForReading by remember { mutableStateOf<Surah?>(null) }
     var activeJuzForReading by remember { mutableStateOf<Int?>(null) }
+
+    // Offline Quran Reader State
+    var activeOfflineSurahForReading by remember { mutableStateOf<Surah?>(null) }
+    var activeOfflineJuzForReading by remember { mutableStateOf<Int?>(null) }
 
     val homeState by viewModel.homeUiState.collectAsState()
 
     val navItems = listOf(
         Screen.Home,
+        Screen.OfflineQuran,
         Screen.Quran,
         Screen.Prayer,
         Screen.Discover,
@@ -88,9 +97,18 @@ fun DeenMateMainApp(viewModel: MainViewModel) {
     )
 
     // Android System Back Gesture Handler
-    // If reading a surah, back takes user back to Quran list; if on any other tab, back returns to Home; if on Home, exits app.
-    BackHandler(enabled = activeSurahForReading != null || activeJuzForReading != null || currentScreen != Screen.Home.route) {
+    BackHandler(
+        enabled = activeSurahForReading != null || 
+                  activeJuzForReading != null || 
+                  activeOfflineSurahForReading != null || 
+                  activeOfflineJuzForReading != null || 
+                  currentScreen != Screen.Home.route
+    ) {
         when {
+            activeOfflineSurahForReading != null || activeOfflineJuzForReading != null -> {
+                activeOfflineSurahForReading = null
+                activeOfflineJuzForReading = null
+            }
             activeSurahForReading != null || activeJuzForReading != null -> {
                 activeSurahForReading = null
                 activeJuzForReading = null
@@ -101,7 +119,21 @@ fun DeenMateMainApp(viewModel: MainViewModel) {
         }
     }
 
-    // If reading a specific Surah or Juz, show the dedicated SurahReaderScreen
+    // If reading Offline Quran, show dedicated OfflineQuranReaderScreen
+    if (activeOfflineSurahForReading != null || activeOfflineJuzForReading != null) {
+        OfflineQuranReaderScreen(
+            initialSurah = activeOfflineSurahForReading,
+            initialJuzNumber = activeOfflineJuzForReading,
+            viewModel = viewModel,
+            onNavigateBack = {
+                activeOfflineSurahForReading = null
+                activeOfflineJuzForReading = null
+            }
+        )
+        return
+    }
+
+    // If reading Online Audio Quran, show SurahReaderScreen
     if (activeSurahForReading != null || activeJuzForReading != null) {
         SurahReaderScreen(
             initialSurah = activeSurahForReading,
@@ -138,29 +170,22 @@ fun DeenMateMainApp(viewModel: MainViewModel) {
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
-                            Row(verticalAlignment = Alignment.Bottom) {
-                                Text(
-                                    text = "DeenMate",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "by Rauf",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.tertiary,
-                                    modifier = Modifier.padding(bottom = 2.dp)
-                                )
-                            }
-                            homeState.hijriDate?.let { hijri ->
-                                Text(
-                                    text = "${hijri.formatShort()} • ${homeState.userSettings.cityName}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            // Top-Left Branding: DeenMate by Rauf
+                            Text(
+                                text = "DeenMate",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                lineHeight = 20.sp
+                            )
+                            Text(
+                                text = "by Rauf",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GoldAccentDark,
+                                letterSpacing = 0.5.sp,
+                                lineHeight = 14.sp
+                            )
                         }
                     }
                 },
@@ -202,7 +227,8 @@ fun DeenMateMainApp(viewModel: MainViewModel) {
                         label = {
                             Text(
                                 text = screen.title,
-                                fontSize = 10.sp,
+                                fontSize = 9.5.sp,
+                                maxLines = 1,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
                         },
@@ -238,7 +264,16 @@ fun DeenMateMainApp(viewModel: MainViewModel) {
                             },
                             onOpenSurah = { surahNum ->
                                 val surah = IslamicDataSource.SURAHS.find { it.number == surahNum } ?: IslamicDataSource.SURAHS[0]
-                                activeSurahForReading = surah
+                                activeOfflineSurahForReading = surah
+                            }
+                        )
+                    }
+                    Screen.OfflineQuran.route -> {
+                        OfflineQuranScreen(
+                            viewModel = viewModel,
+                            onOpenOfflineReader = { surah, juzNum ->
+                                activeOfflineSurahForReading = surah
+                                activeOfflineJuzForReading = juzNum
                             }
                         )
                     }
@@ -266,7 +301,7 @@ fun DeenMateMainApp(viewModel: MainViewModel) {
                             onBack = { currentScreen = Screen.Home.route },
                             onOpenSurah = { surahNum ->
                                 val surah = IslamicDataSource.SURAHS.find { it.number == surahNum } ?: IslamicDataSource.SURAHS[0]
-                                activeSurahForReading = surah
+                                activeOfflineSurahForReading = surah
                             },
                             onNavigateToDiscoverTab = { tab ->
                                 activeDiscoverTab = tab

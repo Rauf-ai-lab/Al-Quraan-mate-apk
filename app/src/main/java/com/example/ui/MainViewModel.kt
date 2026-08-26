@@ -285,6 +285,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         quranAudioPlayerManager.playAyah(surah, ayah)
     }
 
+    fun resumeLastAudioSession() {
+        val settings = userSettings.value
+        if (settings.hasSavedAudioSession) {
+            val surah = IslamicDataSource.SURAHS.find { it.number == settings.lastAudioSurahNumber } ?: IslamicDataSource.SURAHS[0]
+            _selectedSurah.value = surah
+            val ayahs = IslamicDataSource.getAyahsForSurah(surah)
+            _selectedSurahAyahs.value = ayahs
+            quranAudioPlayerManager.resumeRecitation(
+                surahNumber = settings.lastAudioSurahNumber,
+                ayahNumber = settings.lastAudioAyahNumber,
+                positionMs = settings.lastAudioPositionMs,
+                reciterId = settings.lastAudioReciterId
+            )
+        }
+    }
+
+    fun saveOfflineProgress(surahNumber: Int, ayahNumber: Int, page: Int = 1) {
+        viewModelScope.launch {
+            preferencesRepository.saveOfflineQuranProgress(surahNumber, ayahNumber, page)
+            val surah = IslamicDataSource.SURAHS.find { it.number == surahNumber }
+            if (surah != null) {
+                deenRepository.setLastRead(surahNumber, ayahNumber, surah.nameArabic, surah.nameEnglish)
+            }
+        }
+    }
+
     fun toggleQuranPlayPause() {
         quranAudioPlayerManager.togglePlayPause()
     }

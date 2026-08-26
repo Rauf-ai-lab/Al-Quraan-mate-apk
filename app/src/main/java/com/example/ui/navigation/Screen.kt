@@ -12,7 +12,8 @@ sealed class Screen(
     val outlinedIcon: ImageVector
 ) {
     object Home : Screen("home", "Home", Icons.Filled.Home, Icons.Outlined.Home)
-    object Quran : Screen("quran", "Quran", Icons.Filled.MenuBook, Icons.Outlined.MenuBook)
+    object OfflineQuran : Screen("offline_quran", "Offline Quran", Icons.Filled.AutoStories, Icons.Outlined.AutoStories)
+    object Quran : Screen("quran", "Audio Quran", Icons.Filled.MenuBook, Icons.Outlined.MenuBook)
     object Prayer : Screen("prayer", "Prayer", Icons.Filled.AccessTime, Icons.Outlined.AccessTime)
     object Discover : Screen("discover", "Discover", Icons.Filled.Explore, Icons.Outlined.Explore)
     object Tracker : Screen("tracker", "Deen Tracker", Icons.Filled.TaskAlt, Icons.Outlined.TaskAlt)

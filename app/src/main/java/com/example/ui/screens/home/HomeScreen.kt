@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.local.IslamicDataSource
 import com.example.data.model.Ayah
 import com.example.data.model.DuaAzkar
 import com.example.data.model.Hadith
@@ -70,7 +71,8 @@ fun HomeScreen(
         // 0. Top Brand & Developer Identity Header: "DeenMate by Rauf"
         item {
             LiquidGlassCard(
-                modifier = Modifier.fillMaxWidth().testTag("deenmate_top_brand_header")
+                modifier = Modifier.fillMaxWidth().testTag("deenmate_top_brand_header"),
+                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -78,29 +80,35 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                text = "DeenMate",
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "v2.0 M",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                                modifier = Modifier.padding(bottom = 3.dp)
-                            )
-                        }
                         Text(
-                            text = "by Rauf",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.tertiary,
-                            letterSpacing = 0.5.sp
+                            text = "DeenMate",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.primary,
+                            lineHeight = 28.sp
                         )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "by Rauf",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GoldAccentDark,
+                                letterSpacing = 0.8.sp
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                            ) {
+                                Text(
+                                    text = "PRO",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
                     }
 
                     // Optional Profile Quick Badge
@@ -149,6 +157,80 @@ fun HomeScreen(
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Resume Online Audio Recitation Card (if saved session exists)
+        if (uiState.userSettings.hasSavedAudioSession) {
+            item {
+                val savedSurah = IslamicDataSource.SURAHS.find { it.number == uiState.userSettings.lastAudioSurahNumber } ?: IslamicDataSource.SURAHS[0]
+                LiquidGlassCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .clickable {
+                            viewModel.resumeLastAudioSession()
+                            onNavigateToScreen(Screen.Quran.route)
+                        }
+                        .testTag("resume_audio_recitation_card"),
+                    borderColor = GoldAccentDark.copy(alpha = 0.4f),
+                    contentPadding = PaddingValues(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(GoldAccentDark.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.PlayArrow,
+                                    contentDescription = "Resume",
+                                    tint = GoldAccentDark,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Resume Quran Recitation",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = GoldAccentDark
+                                )
+                                Text(
+                                    text = "Surah ${savedSurah.nameEnglish} • Ayah ${uiState.userSettings.lastAudioAyahNumber}",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = GoldAccentDark
+                        ) {
+                            Text(
+                                text = "Listen",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
                         }
                     }
                 }
@@ -479,8 +561,9 @@ private fun QuickActionGrid(
         SectionHeader(title = "Quick Shortcuts")
 
         val actions = listOf(
+            Triple("Offline Quran", Icons.Filled.AutoStories) { onNavigateToScreen(Screen.OfflineQuran.route) },
+            Triple("Audio Quran", Icons.Filled.MenuBook) { onNavigateToScreen(Screen.Quran.route) },
             Triple("Search", Icons.Filled.Search) { onNavigateToScreen(Screen.Search.route) },
-            Triple("Holy Quran", Icons.Filled.MenuBook) { onNavigateToScreen(Screen.Quran.route) },
             Triple("Qibla Finder", Icons.Filled.Explore) { onNavigateToDiscoverTab(DiscoverTab.QIBLA) },
             Triple("Tasbeeh", Icons.Filled.TouchApp) { onNavigateToDiscoverTab(DiscoverTab.TASBEEH) },
             Triple("Duas & Azkar", Icons.Filled.Favorite) { onNavigateToDiscoverTab(DiscoverTab.DUAS) },
