@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Golden Crescent Moon -->
+    <path
+        android:pathData="M 52,28 C 38.7,28 28,38.7 28,52 C 28,65.3 38.7,76 52,76 C 59.8,76 66.7,72.3 71.1,66.6 C 68.3,67.7 65.2,68.4 62,68.4 C 49.3,68.4 39,58.1 39,45.4 C 39,37.8 42.7,31.1 48.4,26.9 C 49.6,27.6 50.8,28 52,28 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="28"
+                android:startY="28"
+                android:endX="72"
+                android:endY="76"
+                android:type="linear">
+                <item android:color="#FDE68A" android:offset="0.0" />
+                <item android:color="#F59E0B" android:offset="0.6" />
+                <item android:color="#D97706" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- 8-Pointed Star -->
+    <path
+        android:pathData="M 68,36 L 70.5,39.5 L 75,39 L 73.5,43 L 76.5,46.5 L 72,47 L 70.5,51 L 68,47.5 L 63.5,48 L 65,44 L 62,40.5 L 66.5,40 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="62"
+                android:startY="36"
+                android:endX="77"
+                android:endY="51"
+                android:type="linear">
+                <item android:color="#FEF08A" android:offset="0.0" />
+                <item android:color="#F59E0B" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>
